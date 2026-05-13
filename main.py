@@ -1,11 +1,20 @@
+streamlit
+    yfinance
+    plotly
+    pandas
+    ```
+3.  **Refresh:** Streamlit app par ja kar page ko refresh (reload) karein.
+
+**Is code mein maine `pandas` library bhi add ki hai jo error aane se rokegi. Ab check kijiye aur bataiye, sab sahi chal raha hai?**
+```python
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
 
-# App title and styling
+# 1. App setup
 st.set_page_config(page_title="Samrat AI Market Advisor", layout="wide")
 
-# Simple PIN Protection
+# 2. PIN Protection (1234)
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -20,40 +29,49 @@ if not st.session_state.authenticated:
             st.error("Ghalat PIN! Phir se koshish karein.")
     st.stop()
 
-# --- Main App Starts Here ---
+# 3. Main App UI
 st.title("📈 Samrat AI Market Advisor")
-st.sidebar.header("Settings")
 
-# User Input for Stock
-symbol = st.sidebar.text_input("Enter Stock Symbol (e.g., RELIANCE.NS, TSLA)", "RELIANCE.NS")
-period = st.sidebar.selectbox("Select Period", ["1mo", "3mo", "6mo", "1y", "5y"])
+# Sidebar for inputs
+st.sidebar.header("Market Settings")
+symbol = st.sidebar.text_input("Enter Stock Symbol", "RELIANCE.NS")
+period = st.sidebar.selectbox("Select Time Period", ["1mo", "3mo", "6mo", "1y", "5y"])
 
 try:
-    # Fetch Data
+    # 4. Data Download
     data = yf.download(symbol, period=period)
     
     if data.empty:
-        st.warning("Data nahi mila. Sahi symbol check karein.")
+        st.warning("Data nahi mila. Sahi symbol check karein (e.g., RELIANCE.NS).")
     else:
-        # Chart
-        fig = go.Figure(data=[go.Candlestick(x=data.index,
-                        open=data['Open'],
-                        high=data['High'],
-                        low=data['Low'],
-                        close=data['Close'],
-                        name='Market Data')])
+        # Fix for Plotly (removing timezone for better charts)
+        data.index = data.index.tz_localize(None)
         
+        # 5. Candlestick Chart
+        fig = go.Figure(data=[go.Candlestick(
+            x=data.index,
+            open=data['Open'],
+            high=data['High'],
+            low=data['Low'],
+            close=data['Close'],
+            name='Market Price'
+        )])
+        
+        fig.update_layout(title=f"{symbol} Price Chart", xaxis_rangeslider_visible=False)
         st.plotly_chart(fig, use_container_width=True)
         
-        # Simple AI Insight
-        last_price = data['Close'].iloc[-1]
-        st.subheader(f"AI Analysis for {symbol}")
-        st.write(f"Current Price: **₹{last_price:,.2f}**")
+        # 6. AI Analysis & Fixed Price Display
+        # Using float() to fix the "Unsupported format string" error
+        last_price = float(data['Close'].iloc[-1])
+        avg_price = float(data['Close'].mean())
         
-        if last_price > data['Close'].mean():
-            st.success("Analysis: Market is currently above average. Bullish trend!")
+        st.subheader(f"AI Analysis for {symbol}")
+        st.write(f"Current Market Price: **₹{last_price:,.2f}**")
+        
+        if last_price > avg_price:
+            st.success("💡 Analysis: Bullish Trend! Market price average se upar hai.")
         else:
-            st.info("Analysis: Market is below average. Potential buying opportunity?")
+            st.info("💡 Analysis: Market average se niche hai. Watch for recovery.")
 
 except Exception as e:
-    st.error(f"Kuch ghalat hua: {e}")
+    st.error(f"Kuch technical issue hua: {e}")
