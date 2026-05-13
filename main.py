@@ -1,7 +1,4 @@
-streamlit
-    yfinance
-    plotly
-    pandas
+
     ```
 3.  **Refresh:** Streamlit app par ja kar page ko refresh (reload) karein.
 
